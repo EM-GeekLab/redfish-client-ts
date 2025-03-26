@@ -27,21 +27,20 @@ async function main() {
 
     // 遍历所有系统，获取信息
     for (const systemId of systemIds) {
-      // console.log(`\n获取系统 ${systemId} 的信息:`);
-      // startTime = Date.now();
-      // const [cpus, memory, pcieDevices] = await Promise.all([
-      //   bmcClient.getCPUInfo(systemId),
-      //   bmcClient.getMemoryInfo(systemId),
-      //   bmcClient.getPCIeDevicesInfo(systemId)
-      // ]);
-      // console.log(`\n获取系统基础信息耗时 ${Date.now() - startTime} ms`);
-      // console.log(JSON.stringify(cpus, null, 2));
-      // console.log(JSON.stringify(memory, null, 2));
-      // console.log(JSON.stringify(pcieDevices, null, 2));
+      console.log(`\n获取系统 ${systemId} 的信息:`);
+      startTime = Date.now();
+      const [cpus, memory, pcieDevices] = await Promise.all([
+        bmcClient.getCPUInfo(systemId),
+        bmcClient.getMemoryInfo(systemId),
+        bmcClient.getPCIeDevicesInfo(systemId)
+      ]);
+      console.log(`\n获取系统基础信息耗时 ${Date.now() - startTime} ms`);
+      console.log(JSON.stringify(cpus, null, 2));
+      console.log(JSON.stringify(memory, null, 2));
+      console.log(JSON.stringify(pcieDevices, null, 2));
 
       // 挂载虚拟光驱并启动
-      // const mediaUrl = await input('请输入虚拟光驱镜像的URL: ') || 'http://172.16.5.9/boot.img';
-      const mediaUrl = 'http://172.16.5.9/boot.img';
+      const mediaUrl = await input('请输入虚拟光驱镜像的URL: ') || 'http://172.16.5.9/boot.img';
       startTime = Date.now();
       const {status: loadSuccess, matchingMedia} = await bmcClient.bootVirtualMedia(mediaUrl, systemId);
       console.log(`\n挂载虚拟光驱${loadSuccess? "成功": "失败"}, 耗时 ${Date.now() - startTime} ms`);
