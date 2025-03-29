@@ -1,4 +1,4 @@
-import {iDRACRedfishClient} from './index';
+import {iDRACRedfishClient, RedfishTypes} from 'redfish-client';
 
 async function input(label: string) {
   process.stdout.write(label);
@@ -40,7 +40,7 @@ async function main() {
       console.log(JSON.stringify(pcieDevices, null, 2));
 
       // 挂载虚拟光驱并启动
-      const mediaUrl = await input('请输入虚拟光驱镜像的URL: ') || 'http://172.16.5.9/boot.img';
+      const mediaUrl = process.env.image_url || await input('请输入虚拟光驱镜像的URL: ') || '';
       startTime = Date.now();
       const {status: loadSuccess, matchingMedia} = await bmcClient.bootVirtualMedia(mediaUrl, systemId);
       console.log(`\n挂载虚拟光驱${loadSuccess? "成功": "失败"}, 耗时 ${Date.now() - startTime} ms`);
