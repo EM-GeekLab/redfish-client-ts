@@ -1,0 +1,7 @@
+.idea/
+node_modules/
+.git/
+*.lock
+example.ts
+tsconfig.json
+tsconfig.build.json
