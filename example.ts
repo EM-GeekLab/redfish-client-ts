@@ -1,4 +1,4 @@
-import {iDRACRedfishClient, RedfishTypes} from 'redfish-client';
+import {autoDetect} from 'redfish-client';
 
 async function input(label: string) {
   process.stdout.write(label);
@@ -12,13 +12,14 @@ async function main() {
   const bmcIpAddress: string | null = process.env.bmc_ip || null;
   const bmcUsername: string | null = process.env.bmc_username || null;
   const bmcPassword: string | null = process.env.bmc_password || null;
-
   if (!bmcIpAddress || !bmcUsername || !bmcPassword) {
     throw new Error('请设置 BMC 的 IP 地址、用户名和密码');
   }
+
+  const bmcClient = await autoDetect(bmcIpAddress, bmcUsername, bmcPassword);
+
   let startTime = Date.now();
-  const bmcClient = new iDRACRedfishClient(bmcIpAddress, bmcUsername, bmcPassword);
-  console.log(`\n已创建 BMC 客户端，耗时 ${Date.now() - startTime} ms`);
+  console.log(`\n已创建 BMC 客户端，平台${bmcClient.name}，耗时 ${Date.now() - startTime} ms`);
   startTime = Date.now();
   try {
     // 获取可用的系统ID
