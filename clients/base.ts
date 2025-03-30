@@ -12,7 +12,7 @@ import type {
   SystemInfo,
   Systems, Task, VirtualMedia, VirtualMediaCollection, VirtualMediaMember
 } from "../types";
-import {ResetType, RedfishMode} from "../enums";
+import {ResetType, RedfishMode, BootSourceOverrideTargets} from "../enums";
 
 export class NotImplementError extends Error {
   constructor(methodName?: string) {
@@ -31,6 +31,7 @@ export class RedfishClient {
   protected readonly baseUrl: string = '';
   private readonly userName: string = '';
   private readonly password: string = '';
+  public readonly name: string = '';         // 客户端名称
 
   private sessionUri: string = '';             // 会话 URI
   private sessionToken: string | null = null;  // 会话令牌，通过 X-Auth-Token 传递
@@ -50,6 +51,8 @@ export class RedfishClient {
     this.baseUrl = `https://${ipAddress}`;
     this.userName = username;
     this.password = password;
+
+    this.name = this.constructor.name;
   }
 
   /**
@@ -85,7 +88,6 @@ export class RedfishClient {
       }
 
       if (response.status === 204 || response.headers.get('content-length') === '0') {
-        console.log(await response.text(), response.headers, response.status);
         return {data: {} as T, headers: response.headers};
       }
       // 解析响应JSON
@@ -110,7 +112,7 @@ export class RedfishClient {
     }
   }
 
-  //region Redfish 登录鉴权与会话管理
+  //region [Redfish 登录鉴权与会话管理]
   /**
    * 获取 Redfish 登录地址
    * @returns Redfish 登录地址
@@ -196,7 +198,7 @@ export class RedfishClient {
 
   //endregion
 
-  //region 默认公用接口，获取 System 和 Manager 信息
+  //region [默认公用接口，获取 System 和 Manager 信息]
   /**
    * 获取可用的系统ID
    * @returns 系统ID数组
@@ -290,7 +292,7 @@ export class RedfishClient {
 
   //endregion
 
-  //region 获取硬件信息
+  //region [获取硬件信息]
   /**
    * 获取单个CPU信息
    * @param odataId
@@ -439,7 +441,7 @@ export class RedfishClient {
 
   //endregion
 
-  //region 电源管理相关接口
+  //region [电源管理相关接口]
   /**
    * 获取系统电源状态
    */
@@ -527,7 +529,7 @@ export class RedfishClient {
 
     while (true) {
       try {
-        const { data } = await this.customFetch<Task>(this.baseUrl + taskId, { method: 'GET' });
+        const {data} = await this.customFetch<Task>(this.baseUrl + taskId, {method: 'GET'});
 
         // 超过最大等待时间则抛出异常
         const currentTime = new Date();
@@ -546,7 +548,53 @@ export class RedfishClient {
     }
   }
 
-  //region 挂载虚拟媒体并设置虚拟媒体为下一个一次性启动设备
+  //region [挂载虚拟媒体并设置虚拟媒体为下一个一次性启动设备]
+  /**
+   * 设置临时下一次启动设备
+   * @param systemId 系统ID
+   * @param bootDeviceName 启动设备名称
+   * @returns 是否设置成功
+   */
+  async setNextBootDevice(
+    systemId?: string,
+    bootDeviceName: BootSourceOverrideTargets = BootSourceOverrideTargets.Cd,
+  ): Promise<boolean> {
+    if (this.name === 'iDRACRedfishClient') {
+      console.warn("iDRAC Redfish 设置的下一次启动设备为物理设备，不支持设置虚拟媒体");
+    }
+    const sysId = systemId || await this.getDefaultSystemId();
+    const systemInfo = this.systemInfos[sysId] || await this.getSystemInfo(sysId);
+    if (!systemInfo) {
+      throw new Error('未找到系统信息');
+    }
+    if (!systemInfo.Boot || !systemInfo.Boot.BootSourceOverrideEnabled) {
+      throw new Error('系统不支持设置下一次启动设备');
+    }
+    if (systemInfo.Boot["BootSourceOverrideTarget@Redfish.AllowableValues"]) {
+      if (!systemInfo.Boot["BootSourceOverrideTarget@Redfish.AllowableValues"].includes(bootDeviceName)) {
+        throw new Error(`系统不支持设置指定的启动设备，支持列表：${JSON.stringify(systemInfo.Boot["BootSourceOverrideTarget@Redfish.AllowableValues"])}，当前选择：${bootDeviceName}`);
+      }
+    }
+    const setBootUri = systemInfo['@odata.id'];
+    const bootData = {
+      Boot: {
+        BootSourceOverrideEnabled: 'Once',
+        BootSourceOverrideTarget: bootDeviceName,
+        BootSourceOverrideMode: "UEFI"
+      }
+    };
+    try {
+      await this.customFetch<void>(this.baseUrl + setBootUri, {
+        method: 'PATCH',
+        body: JSON.stringify(bootData)
+      });
+      return true;
+    } catch (error) {
+      console.error(`设置系统 ${sysId} 下一次启动设备失败`, error);
+      throw error;
+    }
+  }
+
   /**
    * 判断当前选择的 VirtualMedia 类型是否支持指定的目标类型
    */
@@ -587,7 +635,10 @@ export class RedfishClient {
   /**
    * 装载虚拟媒体并启动
    */
-  async bootVirtualMedia(imageUri: string, systemId?: string): Promise<{status: boolean, matchingMedia: VirtualMediaMember}> {
+  async bootVirtualMedia(imageUri: string, systemId?: string): Promise<{
+    status: boolean,
+    matchingMedia: VirtualMediaMember
+  }> {
     const sysId = systemId || await this.getDefaultSystemId();
     const systemInfo = this.systemInfos[sysId] || await this.getSystemInfo(sysId);
     if (!systemInfo) {
@@ -653,5 +704,6 @@ export class RedfishClient {
     }
     return {status: true, matchingMedia};
   }
+
   //endregion
 }

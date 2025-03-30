@@ -30,3 +30,15 @@ export enum RedfishMode {
   Supermicro = "Supermicro", // Supermicro，主要用于超微主板的服务器
   OpenBMC = "OpenBMC",       // OpenBMC，主要用于开源BMC
 }
+
+export enum BootSourceOverrideTargets {
+  None = "None",             // 无
+  Pxe = "Pxe",               // PXE
+  Hdd = "Hdd",               // 硬盘
+  Cd = "Cd",                 // 光驱
+  BiosSetup = "BiosSetup",   // BIOS设置
+  Floppy = "Floppy",         // 软盘
+  // 下方为不同厂商支持不同的设备
+  UefiShell = "UefiShell",   // UEFI Shell
+  SDCard = "SDCard",         // SD卡
+}
