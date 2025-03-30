@@ -4,7 +4,7 @@ import {BootSourceOverrideEnabledType, DeviceType} from './enums';
  * Redfish API 的返回数据结构
  */
 type UUID = string;
-type Action = { target: string };
+export type Action = { target: string };
 
 export interface RedfishRoot {
   Id: string;              // 根资源的唯一标识符
@@ -19,6 +19,7 @@ export interface RedfishRoot {
   Links: {                 // 根资源的关联资源链接
     Sessions: { '@odata.id': string; }; // 指向会话资源的引用
   };
+  Oem?: Record<string, object>;
 }
 
 export interface RedfishSession {
@@ -32,6 +33,7 @@ export interface Systems {
 }
 
 export interface SystemInfo {
+  "@odata.id": string;
   Id: string;
   Name: string;
   Model: string;
@@ -60,6 +62,7 @@ export interface SystemInfo {
     BootOrder?: Array<string>;
     BootSourceOverrideTarget: string;
     BootSourceOverrideEnabled: BootSourceOverrideEnabledType;
+    BootSourceOverrideMode: string;
     'BootSourceOverrideTarget@Redfish.AllowableValues': Array<string>;
   };
   Links: {
@@ -190,7 +193,8 @@ export interface VirtualMedia {
   Inserted: boolean;
   Image: string;
   ImageName: string;
-  Actions: Record<string, Action>;
+  Actions?: Record<string, Action>;
+  Oem?: Record<string, any>;
 }
 
 export interface Message {
