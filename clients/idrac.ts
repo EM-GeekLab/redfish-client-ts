@@ -8,6 +8,9 @@ export class iDRACRedfishClient extends RedfishClient {
    * @param matchingMedia 匹配的虚拟媒体设备
    */
   async mountVirtualMedia(imageUri: string, matchingMedia: VirtualMedia): Promise<boolean> {
+    if (!matchingMedia.Actions || !matchingMedia.Actions["#VirtualMedia.InsertMedia"]) {
+      throw new Error('未找到装载虚拟媒体操作');
+    }
     // 装载虚拟媒体
     try {
       await this.customFetch<void>(this.baseUrl + matchingMedia.Actions["#VirtualMedia.InsertMedia"].target, {
@@ -25,6 +28,9 @@ export class iDRACRedfishClient extends RedfishClient {
    * 卸载虚拟媒体 - iDRAC 模式
    */
   async unmountVirtualMedia(matchingMedia: VirtualMedia): Promise<boolean> {
+    if (!matchingMedia.Actions || !matchingMedia.Actions["#VirtualMedia.EjectMedia"]) {
+      throw new Error('未找到卸载虚拟媒体操作');
+    }
     try {
       await this.customFetch<void>(this.baseUrl + matchingMedia.Actions["#VirtualMedia.EjectMedia"].target, {
         method: 'POST',
