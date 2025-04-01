@@ -13,6 +13,7 @@ import type {
   Systems, Task, VirtualMedia, VirtualMediaCollection, VirtualMediaMember
 } from "../types";
 import {ResetType, RedfishMode, BootSourceOverrideTargets} from "../enums";
+import {fetchWithoutSSL} from "../utils";
 
 export class NotImplementError extends Error {
   constructor(methodName?: string) {
@@ -21,25 +22,6 @@ export class NotImplementError extends Error {
       : `Not implemented: 由于不同厂商的实现方式不同，此处需要在各厂商的子类中实现`;
     super(message);
     this.name = 'NotImplementError';
-  }
-}
-
-/**
- * 通过 fetch 获取数据，忽略SSL证书验证
- * @param url 请求地址
- * @param options 请求选项
- */
-export const fetchWithoutSSL = async (url: string, options: RequestInit = {}): Promise<Response> => {
-  if (typeof Bun !== 'undefined') {
-    // Bun环境 - 使用Bun特有的自定义选项来忽略SSL证书验证
-    const bunOptions = {
-      tls: {rejectUnauthorized: false}
-    };
-    return fetch(url, {...options, ...bunOptions});
-  } else {
-    // 非Bun
-    console.warn('非Bun环境下，暂不支持自签证书验证');  // TODO: 非Bun环境下的无证书验证逻辑
-    return fetch(url, options);
   }
 }
 

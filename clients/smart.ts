@@ -1,7 +1,7 @@
 import { iDRACRedfishClient } from "./idrac";
 import { iBMCRedfishClient } from "./ibmc";
 import type {RedfishRoot} from "../types";
-import {fetchWithoutSSL} from "./base";
+import {fetchWithoutSSL} from "../utils";
 
 /**
  * autoDetect - 自动根据返回的 Redfish 的数据中的 oem 信息，自动选择对应的客户端
