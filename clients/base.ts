@@ -25,6 +25,25 @@ export class NotImplementError extends Error {
 }
 
 /**
+ * 通过 fetch 获取数据，忽略SSL证书验证
+ * @param url 请求地址
+ * @param options 请求选项
+ */
+export const fetchWithoutSSL = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  if (typeof Bun !== 'undefined') {
+    // Bun环境 - 使用Bun特有的自定义选项来忽略SSL证书验证
+    const bunOptions = {
+      tls: {rejectUnauthorized: false}
+    };
+    return fetch(url, {...options, ...bunOptions});
+  } else {
+    // 非Bun
+    console.warn('非Bun环境下，暂不支持自签证书验证');  // TODO: 非Bun环境下的无证书验证逻辑
+    return fetch(url, options);
+  }
+}
+
+/**
  * Redfish 客户端基类
  */
 export class RedfishClient {
@@ -66,51 +85,51 @@ export class RedfishClient {
     options: RequestInit = {},
     withSessionToken: boolean = true
   ): Promise<{ data: T; headers: Headers }> {
+    // 获取和缓存会话令牌的逻辑可以优化
+    const sessionToken = withSessionToken ? (this.sessionToken || await this.getSessionToken()) : undefined;
+
     const fetchOptions: RequestInit = {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        ...(withSessionToken ? {'X-Auth-Token': this.sessionToken || await this.getSessionToken()} : {}),
+        ...(sessionToken ? {'X-Auth-Token': sessionToken} : {}),
         ...(options.headers)
       },
       ...options
     };
-    // 创建Bun特有的自定义选项来忽略SSL证书验证
-    const bunOptions = {
-      tls: {rejectUnauthorized: false}
-    };
+    let response: Response;
 
     try {
-      const response = await fetch(url, {...fetchOptions, ...bunOptions});
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status} - ${await response.text()}`);
-      }
-
-      if (response.status === 204 || response.headers.get('content-length') === '0') {
-        return {data: {} as T, headers: response.headers};
-      }
-      // 解析响应JSON
-      const data = await response.json();
-
-      // 检查是否为RedfishError格式
-      if (!response.ok || (data && 'error' in data)) {
-        const redfishError = data as RedfishError;
-        if (redfishError.error && redfishError.error['@Message.ExtendedInfo']) {
-          const errorMessages = redfishError.error['@Message.ExtendedInfo']
-            .map(info => info.Message)
-            .join(', ');
-          throw new Error(`Redfish错误: ${errorMessages}`);
-        }
-        throw new Error(`HTTP error! Status: ${response.status} - ${JSON.stringify(data)}`);
-      }
-
-      return {data: data as T, headers: response.headers};
+      response = await fetchWithoutSSL(url, fetchOptions);
     } catch (error) {
       console.error(`请求失败: ${url}`, error);
       throw error;
     }
+    // 处理空响应
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      return {data: {} as T, headers: response.headers};
+    }
+    // 检查响应状态码
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status} - ${await response.text()}`);
+    }
+    // 解析响应JSON
+    const data = await response.json().catch(() => {
+      throw new Error(`无法解析JSON响应: ${url}`);
+    });
+    // 检查成功响应中的Redfish错误
+    if (data && 'error' in data) {
+      const redfishError = data as RedfishError;
+      if (redfishError.error && redfishError.error['@Message.ExtendedInfo']) {
+        const errorMessages = redfishError.error['@Message.ExtendedInfo']
+          .map(info => info.Message)
+          .join(', ');
+        throw new Error(`Redfish错误: ${errorMessages}`);
+      }
+    }
+    return {data: data as T, headers: response.headers};
   }
+
 
   //region [Redfish 登录鉴权与会话管理]
   /**
