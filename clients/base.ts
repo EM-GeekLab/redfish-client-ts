@@ -137,6 +137,9 @@ export class RedfishClient {
    * 获取会话令牌
    */
   async getSessionToken(): Promise<string> {
+    if (this.sessionToken) {
+      return this.sessionToken;
+    }
     try {
       const sessionUri = this.sessionUri ? this.sessionUri : await this.getRedfishSessionUri();
       if (!this.userName || !this.password) {
