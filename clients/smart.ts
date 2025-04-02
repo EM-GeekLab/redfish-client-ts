@@ -20,7 +20,9 @@ const autoDetect = async (ip: string, username: string, password: string) => {
   } else if ('Huawei' in redfishData.Oem) {
     return new iBMCRedfishClient(ip, username, password);
   } else {
-    throw new Error('暂未支持的 OEM 厂商：' + Object.keys(redfishData.Oem).join(', '));
+    // throw new Error('暂未支持的 OEM 厂商：' + Object.keys(redfishData.Oem).join(', '));
+    console.warn("暂未支持的 OEM 厂商：", Object.keys(redfishData.Oem).join(', '), "，默认使用 iDRAC 客户端，请注意是否支持");
+    return new iDRACRedfishClient(ip, username, password);
   }
 }
 
