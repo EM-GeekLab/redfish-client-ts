@@ -1,4 +1,5 @@
 import type {
+  Chassis, Collection,
   CPUInfo, Manager,
   Memory,
   MemoryCollection,
@@ -41,6 +42,7 @@ export class RedfishClient {
   private systemIds: string[] = [];            // 可用的系统ID
   protected systemInfos: Record<string, SystemInfo> = {};  // 默认系统信息
   protected managerInfos: Record<string, Manager> = {};    // 默认管理器信息, Key 为系统ID
+  protected chassisInfos: Record<string, Chassis> = {};        // 默认机箱信息, Key 为系统ID
   /**
    * 构造函数
    * @param ipAddress BMC IP地址
@@ -202,7 +204,7 @@ export class RedfishClient {
 
   //endregion
 
-  //region [默认公用接口，获取 System 和 Manager 信息]
+  //region [默认公用接口，获取 System/Manager/Chassis 信息]
   /**
    * 获取可用的系统ID
    * @returns 系统ID数组
@@ -293,7 +295,26 @@ export class RedfishClient {
       throw error;
     }
   }
-
+  /**
+   * 获取机箱信息
+   * @param systemId 系统ID
+   * @returns 机箱信息
+   */
+  async getChassisInfo(systemId?: string): Promise<Chassis> {
+    const sysId = systemId || await this.getDefaultSystemId();
+    const systemInfo = this.systemInfos[sysId] || await this.getSystemInfo(sysId);
+    if (!systemInfo.Links.Chassis || systemInfo.Links.Chassis.length === 0) {
+      throw new Error('未找到机箱信息');
+    }
+    try {
+      const {data} = await this.customFetch<Chassis>(this.baseUrl + systemInfo.Links.Chassis[0]['@odata.id']);
+      this.chassisInfos[sysId] = data;
+      return data;
+    } catch (error) {
+      console.error(`获取机箱信息失败(${sysId}):`, error);
+      throw error;
+    }
+  }
   //endregion
 
   //region [获取硬件信息]
@@ -373,21 +394,76 @@ export class RedfishClient {
   }
 
   /**
-   * 获取PCIe设备信息
+   * 从 System 中获取PCIe设备信息
    * @param systemId 系统ID
    * @returns PCIe设备信息
    */
-  async getPCIeDevicesInfo(systemId?: string): Promise<PCIeInfo[]> {
+  private async getPCIeDevicesInfoFromSystem(systemId?: string): Promise<PCIeInfo[]> {
     const sysId = systemId || await this.getDefaultSystemId();
     const systemInfo = this.systemInfos[sysId] || await this.getSystemInfo(sysId);
 
     try {
+      if (!systemInfo.PCIeDevices || systemInfo.PCIeDevices.length === 0) {
+        console.warn(`系统 ${sysId} 中未找到 PCIe 设备信息`);
+        return [] as PCIeInfo[];
+      }
       // 获取PCIe设备集合
       const pcieInfoPromises = systemInfo.PCIeDevices.map(pcieDevice =>
         this.getSinglePCIeDeviceInfo(pcieDevice['@odata.id'])
       );
       const results = await Promise.all(pcieInfoPromises);
       return results.filter((pcieInfo): pcieInfo is PCIeInfo => pcieInfo !== null) as PCIeInfo[];
+    } catch (error) {
+      console.error(`获取PCIe设备信息失败(${sysId}):`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 从 Chassis 中获取PCIe设备信息
+   */
+  private async getPCIeDevicesInfoFromChassis(systemId?: string): Promise<PCIeInfo[]> {
+    const sysId = systemId || await this.getDefaultSystemId();
+    const chassisInfo = this.chassisInfos[sysId] || await this.getChassisInfo(sysId);
+    try {
+      if (!chassisInfo.PCIeDevices) {
+        console.warn(`系统 ${sysId}, 机箱 ${chassisInfo.Id} 中未找到 PCIe 设备信息`);
+        return [] as PCIeInfo[];
+      }
+      const pcieUri = chassisInfo.PCIeDevices["@odata.id"];
+      const {data} = await this.customFetch<Collection>(this.baseUrl + pcieUri);
+
+      // 获取PCIe设备集合
+      const pcieInfoPromises = data.Members.map(pcieDevice =>
+        this.getSinglePCIeDeviceInfo(pcieDevice['@odata.id'])
+      );
+      const results = await Promise.all(pcieInfoPromises);
+      return results.filter((pcieInfo): pcieInfo is PCIeInfo => pcieInfo !== null) as PCIeInfo[];
+    } catch (error) {
+      console.error(`获取PCIe设备信息失败(${sysId}):`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取PCIe设备信息
+   * @param systemId 系统ID
+   * @returns PCIe设备信息
+   */
+  async getPCIeDevicesInfo(systemId?: string): Promise<PCIeInfo[]> {
+    const sysId = systemId || await this.getDefaultSystemId();
+    let results: PCIeInfo[] = [];
+    try {
+      // 优先从系统中获取PCIe设备信息
+      results = await this.getPCIeDevicesInfoFromSystem(sysId);
+      if (results.length === 0) {
+        // 如果系统中未找到，则从机箱中获取
+        results = await this.getPCIeDevicesInfoFromChassis(sysId);
+      }
+      if (results.length === 0) {
+        console.warn(`系统 ${sysId} 中未找到 PCIe 设备信息`);
+      }
+      return results;
     } catch (error) {
       console.error(`获取PCIe设备信息失败(${sysId}):`, error);
       throw error;
