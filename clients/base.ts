@@ -402,10 +402,6 @@ export class RedfishClient {
     if (!data || !data.Id) {
       throw new Error('未找到内存信息或缺少内存 ID');
     }
-    if (!data.CapacityMiB || !data.OperatingSpeedMhz || !data.MemoryDeviceType || !data.Status.State) {
-      console.warn(`${data.Id} 缺少内存信息`);
-      return null;
-    }
     return {
       id: data.Id,
       manufacturer: data.Manufacturer || 'Unknown',
