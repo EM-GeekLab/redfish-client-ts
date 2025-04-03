@@ -3,7 +3,7 @@ import type {
   CPUInfo, Manager,
   Memory,
   MemoryCollection,
-  MemoryInfo,
+  MemoryInfo, NetworkAdapter, NetworkCardInfo, NetworkPort, NetworkPortInfo,
   PCIeDevice,
   PCIeInfo,
   Processor,
@@ -515,6 +515,85 @@ export class RedfishClient {
     }
   }
 
+  /**
+   * 获取单个网卡端口信息
+   */
+  async getSingleNetworkPortInfo(odataId: string): Promise<NetworkPortInfo> {
+    const {data} = await this.customFetch<NetworkPort>(this.baseUrl + odataId);
+    if (!data || !data.Id) {
+      throw new Error('未找到网卡端口信息或缺少端口 ID');
+    }
+    return {
+      macAddress: data.AssociatedNetworkAddresses[0] || 'Unknown',
+      linkStatus: data.LinkStatus,
+      speedMbps: data.CurrentLinkSpeedMbps,
+    };
+  }
+
+  /**
+   * 获取单个网卡信息
+   */
+  async getSingleNetworkCardInfo(odataId: string): Promise<NetworkCardInfo | null> {
+    const {data} = await this.customFetch<NetworkAdapter>(this.baseUrl + odataId);
+    if (!data || !data.Id) {
+      throw new Error('未找到网卡信息或缺少网卡 ID');
+    }
+    const portCollectionUri = data.NetworkPorts['@odata.id'];
+    const {data: portData} = await this.customFetch<Collection>(this.baseUrl + portCollectionUri);
+    if (!portData.Members || portData.Members.length === 0) {
+      console.warn(`${data.Id} 缺少网卡端口信息`);
+      return null;
+    }
+    // 获取网卡端口集合
+    const networkPortPromises = portData.Members.map(networkPort =>
+      this.getSingleNetworkPortInfo(networkPort['@odata.id'])
+    );
+    const networkPorts = await Promise.all(networkPortPromises);
+    const ports = networkPorts.filter((networkPort): networkPort is NetworkPortInfo => networkPort !== null) as NetworkPortInfo[];
+    return {
+      id: data.Id,
+      manufacturer: data.Manufacturer || 'Unknown',
+      model: data.Model || data.Name || 'Unknown',
+      status: data.Status.State || 'Unknown',
+      ports: ports
+    };
+  }
+
+  /**
+   * 获取网卡信息
+   * @param systemId 系统ID
+   * @returns 网卡信息
+   */
+  async getNetworkInterfaceInfo(systemId?: string): Promise<NetworkCardInfo[]> {
+    const sysId = systemId || await this.getDefaultSystemId();
+    const chassisInfo = this.chassisInfos[sysId] || await this.getChassisInfo(sysId);
+    // 获取网卡 URI
+    const networkAdaptersUri = chassisInfo.NetworkAdapters['@odata.id'];
+    if (!networkAdaptersUri) {
+      console.warn(`系统 ${sysId} 中未找到网卡信息`);
+      return [] as NetworkCardInfo[];
+    }
+    try {
+      const {data} = await this.customFetch<Collection>(this.baseUrl + networkAdaptersUri);
+      if (!data.Members || data.Members.length === 0) {
+        console.warn(`系统 ${sysId} 中未找到网卡信息`);
+        return [] as NetworkCardInfo[];
+      }
+      // 获取网卡集合
+      const networkInfoPromises = data.Members.map(networkAdapter =>
+        this.getSingleNetworkCardInfo(networkAdapter['@odata.id'])
+      );
+      const results = await Promise.all(networkInfoPromises);
+      if (results.length === 0) {
+        console.warn(`系统 ${sysId} 中未找到网卡信息`);
+        return [] as NetworkCardInfo[];
+      }
+      return results.filter((networkInfo): networkInfo is NetworkCardInfo => networkInfo !== null) as NetworkCardInfo[];
+    } catch (error) {
+      console.error(`获取网卡信息失败(${sysId}):`, error);
+      throw error;
+    }
+  }
   //endregion
 
   //region [电源管理相关接口]

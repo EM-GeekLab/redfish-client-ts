@@ -51,7 +51,7 @@ export interface SystemInfo {
   };
   UUID?: string;
   PowerState: string;
-  PCIeDevices: Array<{ '@odata.id': string }>;
+  PCIeDevices?: Array<{ '@odata.id': string }>;
   Processors: { '@odata.id': string };
   Actions: Record<string, Action>;
 
@@ -67,6 +67,7 @@ export interface SystemInfo {
   };
   Links: {
     ManagedBy: Array<{ '@odata.id': string }>;
+    Chassis: Array<{ '@odata.id': string }>;
   }
   VirtualMedia?: { '@odata.id': string };
 }
@@ -107,20 +108,6 @@ interface PCIeDeviceStatus {
   HealthRollup?: string; // 所有下级资源的聚合健康状态
 }
 
-
-export interface Links {
-  // 包含该PCIe设备的机箱数组
-  Chassis: Array<{ '@odata.id': string; }>;        // 指向Chassis资源的引用
-  'Chassis@odata.count'?: number;                // Chassis集合计数（可选）
-
-  // 该设备公开的PCIe功能数组
-  PCIeFunctions: Array<{ '@odata.id': string; }>; // 指向PCIeFunction资源的引用
-  'PCIeFunctions@odata.count'?: number;          // PCIeFunctions集合计数（可选）
-
-  // 允许的OEM特定链接
-  Oem?: any;
-}
-
 export interface PCIeDevice {
   // 基本资源属性
   Id: string;
@@ -141,7 +128,18 @@ export interface PCIeDevice {
 
   // 状态和链接
   Status: PCIeDeviceStatus; // 设备状态
-  Links: Links;             // 关联资源链接
+  Links: {
+    // 包含该PCIe设备的机箱数组
+    Chassis: Array<{ '@odata.id': string; }>;        // 指向Chassis资源的引用
+    'Chassis@odata.count'?: number;                // Chassis集合计数（可选）
+
+    // 该设备公开的PCIe功能数组
+    PCIeFunctions: Array<{ '@odata.id': string; }>; // 指向PCIeFunction资源的引用
+    'PCIeFunctions@odata.count'?: number;          // PCIeFunctions集合计数（可选）
+
+    // 允许的OEM特定链接
+    Oem?: any;
+  };             // 关联资源链接
 
   // 允许OEM扩展
   Oem?: any;
@@ -219,6 +217,54 @@ export interface Task {
   TaskStatus: string;
 }
 
+export interface Chassis {
+  Id: string;
+  Name: string;
+  ChassisType: string;
+  SerialNumber: string;
+  PartNumber: string;
+  AssetTag: string;
+  IndicatorLED: string;
+  PowerState: string;
+  Status: {
+    State: string;
+    Health: string;
+    HealthRollup: string;
+  };
+  Power: { '@odata.id': string };
+  PCIeDevices: { '@odata.id': string };
+  Thermal: { '@odata.id': string };
+  NetworkAdapters: { '@odata.id': string };
+  PCIeSlots: { '@odata.id': string };
+  Sensors: { '@odata.id': string };
+  Memory: { '@odata.id': string };
+}
+
+export interface Collection {
+  Members: Array<{ '@odata.id': string }>;
+  "Members@odata.count"?: number;
+}
+
+export interface NetworkAdapter {
+  Id: string;
+  Name: string;
+  Manufacturer: string;
+  Model: string;
+  NetworkPorts: { '@odata.id': string };
+  Status: {
+    State: string;
+    Health: string;
+    HealthRollup: string;
+  };
+}
+
+export interface NetworkPort {
+  Id: string;
+  AssociatedNetworkAddresses: string[];
+  LinkStatus: "Down" | "Up" | "Starting" | "Training";
+  CurrentLinkSpeedMbps: number;
+}
+
 /**
  * Redfish Client 的返回数据结构
  */
@@ -252,6 +298,19 @@ export interface MemoryInfo {
   status: string;
 }
 
+export interface NetworkPortInfo {
+  macAddress: string; // MAC 地址
+  linkStatus: "Down" | "Up" | "Starting" | "Training"; // 连接状态
+  speedMbps: number; // 链路速度（Mbps）
+}
+
+export interface NetworkCardInfo {
+  id: string; // 网络适配器ID
+  manufacturer: string; // 制造商
+  model: string; // 型号
+  ports: NetworkPortInfo[]; // 网络端口信息
+  status: string; // 健康状态
+}
 
 export interface InsertMediaRequest {
   Image: string;
