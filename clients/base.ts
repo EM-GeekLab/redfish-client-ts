@@ -239,15 +239,17 @@ export class RedfishClient {
   /**
    * 获取系统基本信息
    * @param systemId 系统ID
+   * @param refresh 是否强制刷新
    * @returns 系统基本信息
    */
-  async getSystemInfo(systemId?: string): Promise<SystemInfo> {
+  async getSystemInfo(systemId?: string, refresh: boolean = false): Promise<SystemInfo> {
     const sysId = systemId || await this.getDefaultSystemId();
     if (!sysId || sysId === '') {
       throw new Error('未找到系统ID');
     }
 
-    if (this.systemInfos && this.systemInfos[sysId]) {
+    // 如果指定了刷新，则清除缓存并获取最新信息，否则直接返回缓存信息
+    if (!refresh && this.systemInfos && this.systemInfos[sysId]) {
       return this.systemInfos[sysId];
     }
     try {
@@ -852,10 +854,20 @@ export class RedfishClient {
       throw new Error('设置虚拟媒体为下一个一次性启动设备失败');
     }
 
-    // 重启系统
-    const isRebooted = await this.forceRestartSystem(sysId);
-    if (!isRebooted) {
-      throw new Error('重启系统失败');
+    // 刷新系统信息，用于判断是否需要重启
+    const latestSystemInfo = await this.getSystemInfo(sysId, true);
+    if (latestSystemInfo.PowerState === 'On') {
+      // 重启系统
+      const isRebooted = await this.forceRestartSystem(sysId);
+      if (!isRebooted) {
+        throw new Error('重启系统失败');
+      }
+    } else if (latestSystemInfo.PowerState === 'Off') {
+      // 开机
+      const isPoweredOn = await this.powerOnSystem(sysId);
+      if (!isPoweredOn) {
+        throw new Error('开机失败');
+      }
     }
     return {status: true, matchingMedia};
   }
