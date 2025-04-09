@@ -50,7 +50,7 @@ export interface SystemInfo {
     }
   };
   UUID?: string;
-  PowerState: string;
+  PowerState: 'On' | 'Off';
   PCIeDevices?: Array<{ '@odata.id': string }>;
   Processors: { '@odata.id': string };
   Actions: Record<string, Action>;
@@ -262,7 +262,7 @@ export interface NetworkPort {
   Id: string;
   AssociatedNetworkAddresses: string[];
   LinkStatus: "Down" | "Up" | "Starting" | "Training";
-  CurrentLinkSpeedMbps: number;
+  CurrentLinkSpeedMbps?: number;
 }
 
 /**
@@ -301,7 +301,8 @@ export interface MemoryInfo {
 export interface NetworkPortInfo {
   macAddress: string; // MAC 地址
   linkStatus: "Down" | "Up" | "Starting" | "Training"; // 连接状态
-  speedMbps: number; // 链路速度（Mbps）
+  speedMbps: number; // 链路速度（Mbps），若未获取到返回 -1
+  speedDisplay: string; // 链路速度显示，在 iBMC 中使用，返回的值为字符串
 }
 
 export interface NetworkCardInfo {

@@ -532,7 +532,8 @@ export class RedfishClient {
     return {
       macAddress: data.AssociatedNetworkAddresses[0] || 'Unknown',
       linkStatus: data.LinkStatus,
-      speedMbps: data.CurrentLinkSpeedMbps,
+      speedMbps: data.CurrentLinkSpeedMbps? data.CurrentLinkSpeedMbps : -1,
+      speedDisplay: data.CurrentLinkSpeedMbps? `${data.CurrentLinkSpeedMbps}Mbps` : 'Unknown',
     };
   }
 

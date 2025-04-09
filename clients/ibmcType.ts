@@ -1,4 +1,4 @@
-import type {VirtualMedia, Action} from "../types";
+import type {VirtualMedia, Action, NetworkPort} from "../types";
 
 export interface HuaweiVirtualMedia extends VirtualMedia {
   Oem: {
@@ -11,4 +11,13 @@ export interface HuaweiVirtualMedia extends VirtualMedia {
 export interface VmmControlPayload {
   VmmControlType: string;
   Image?: string;
+}
+
+export interface HuaweiNetworkPort extends NetworkPort {
+  CurrentLinkSpeedMbps?: never; // 该字段在 iBMC 中不支持
+  Oem: {
+    Huawei: {
+      PortMaxSpeed: string;
+    }
+  }
 }

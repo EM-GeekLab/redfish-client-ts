@@ -1,9 +1,25 @@
-import type {VirtualMedia} from "../types";
-import type {HuaweiVirtualMedia, VmmControlPayload} from "./ibmcType";
+import type {NetworkPortInfo, VirtualMedia} from "../types";
+import type {HuaweiNetworkPort, HuaweiVirtualMedia, VmmControlPayload} from "./ibmcType";
 import {RedfishClient} from "./base";
 import {BootSourceOverrideTargets} from "../enums";
 
 export class iBMCRedfishClient extends RedfishClient {
+  /**
+   * 获取单个网卡端口信息 - iBMC 模式
+   */
+  async getSingleNetworkPortInfo(odataId: string): Promise<NetworkPortInfo> {
+    const {data} = await this.customFetch<HuaweiNetworkPort>(this.baseUrl + odataId);
+    if (!data || !data.Id) {
+      throw new Error('未找到网卡端口信息或缺少端口 ID');
+    }
+    return {
+      macAddress: data.AssociatedNetworkAddresses[0] || 'Unknown',
+      linkStatus: data.LinkStatus,
+      speedMbps: -1,
+      speedDisplay: data.Oem.Huawei.PortMaxSpeed,
+    };
+  }
+
   /**
    * 虚拟媒体连接/卸载 - iBMC 模式
    * @param imageUri 镜像URI
