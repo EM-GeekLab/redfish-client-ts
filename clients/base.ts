@@ -105,6 +105,10 @@ export class RedfishClient {
     if (data && 'error' in data) {
       const redfishError = data as RedfishError;
       if (redfishError.error && redfishError.error['@Message.ExtendedInfo']) {
+        // 适配华为 iBMC 在部分情况下执行成功但返回 MessageId 为 "Base.1.0.Success" 的错误的情况
+        if (redfishError.error['@Message.ExtendedInfo'][0].MessageId === 'Base.1.0.Success') {
+          return {data: {} as T, headers: response.headers};
+        }
         const errorMessages = redfishError.error['@Message.ExtendedInfo']
           .map(info => info.Message)
           .join(', ');
