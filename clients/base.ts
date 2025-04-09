@@ -95,7 +95,7 @@ export class RedfishClient {
     }
     // 检查响应状态码
     if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status} - ${await response.text()}`);
+      throw new Error(`HTTP error! Request: ${url} Status: ${response.status} - ${await response.text()}`);
     }
     // 解析响应JSON
     const data = await response.json().catch(() => {
