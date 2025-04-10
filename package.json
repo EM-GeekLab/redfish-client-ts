@@ -1,6 +1,6 @@
 {
   "name": "redfish-client",
-  "version": "0.3.8",
+  "version": "0.3.9",
   "description": "A Redfish client library for TypeScript",
   "type": "module",
   "main": "dist/index.js",

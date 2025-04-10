@@ -66,7 +66,8 @@ export interface SystemInfo {
     'BootSourceOverrideTarget@Redfish.AllowableValues': Array<string>;
   };
   Links: {
-    ManagedBy: Array<{ '@odata.id': string }>;
+    ManagedBy?: Array<{ '@odata.id': string }>;
+    Managers?: Array<{ '@odata.id': string }>;
     Chassis: Array<{ '@odata.id': string }>;
   }
   VirtualMedia?: { '@odata.id': string };

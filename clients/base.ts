@@ -274,10 +274,15 @@ export class RedfishClient {
   async getSystemManagerId(systemId?: string): Promise<string> {
     const sysId = systemId || await this.getDefaultSystemId();
     const systemInfo = this.systemInfos[sysId] || await this.getSystemInfo(sysId);
-    if (!systemInfo.Links || !systemInfo.Links.ManagedBy || systemInfo.Links.ManagedBy.length === 0) {
+    // Check if Links exists and if either ManagedBy or Managers exists
+    if (!systemInfo.Links) {
+      throw new Error('未找到系统链接信息');
+    }
+    const managers = systemInfo.Links.ManagedBy || systemInfo.Links.Managers;
+    if (!managers || managers.length === 0) {
       throw new Error('未找到任何管理器信息');
     }
-    return systemInfo.Links.ManagedBy[0]['@odata.id'];
+    return managers[0]['@odata.id'];
   }
 
   /**
