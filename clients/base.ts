@@ -722,11 +722,13 @@ export class RedfishClient {
    * 设置临时下一次启动设备
    * @param systemId 系统ID
    * @param bootDeviceName 启动设备名称
+   * @param once 是否一次性启动
    * @returns 是否设置成功
    */
   async setNextBootDevice(
     systemId?: string,
     bootDeviceName: BootSourceOverrideTargets = BootSourceOverrideTargets.Cd,
+    once: boolean = true
   ): Promise<boolean> {
     if (this.name === 'iDRACRedfishClient') {
       console.warn("iDRAC Redfish 设置的下一次启动设备为物理设备，不支持设置虚拟媒体");
@@ -747,7 +749,7 @@ export class RedfishClient {
     const setBootUri = systemInfo['@odata.id'];
     const bootData = {
       Boot: {
-        BootSourceOverrideEnabled: 'Once',
+        BootSourceOverrideEnabled: once? 'Once': 'Continuous',
         BootSourceOverrideTarget: bootDeviceName,
         BootSourceOverrideMode: "UEFI"
       }
@@ -884,6 +886,5 @@ export class RedfishClient {
     }
     return {status: true, matchingMedia};
   }
-
   //endregion
 }
