@@ -1,4 +1,4 @@
-import type {NetworkPortInfo, VirtualMedia} from "../types";
+import type {NetworkPortInfo, Task, VirtualMedia} from "../types";
 import type {HuaweiNetworkPort, HuaweiVirtualMedia, VmmControlPayload} from "./ibmcType";
 import {RedfishClient} from "./base";
 import {BootSourceOverrideTargets} from "../enums";
@@ -33,15 +33,21 @@ export class iBMCRedfishClient extends RedfishClient {
     const payload: VmmControlPayload = {
       VmmControlType: action
     };
-    if (imageUri === '' || action === 'Disconnect') {
+    if (action !== 'Disconnect') {
       payload.Image = imageUri;
     }
     try {
-      await this.customFetch<void>(this.baseUrl + matchingMedia.Oem.Huawei.Actions['#VirtualMedia.VmmControl'].target, {
+      console.log(JSON.stringify(payload, null, 2));
+      const {data, headers} = await this.customFetch<Task>(this.baseUrl + matchingMedia.Oem.Huawei.Actions['#VirtualMedia.VmmControl'].target, {
         method: 'POST',
         body: JSON.stringify(payload)
       });
-      return true;
+      const taskId = data["@odata.id"];
+      if (!taskId) {
+        throw new Error('未找到任务ID');
+      }
+      console.log({taskId, data})
+      return await this.waitForTaskCompletion(taskId);
     } catch (error) {
       console.error('装载虚拟媒体失败', error);
       throw error;

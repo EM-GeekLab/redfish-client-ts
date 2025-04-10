@@ -71,6 +71,8 @@ export interface SystemInfo {
     Chassis: Array<{ '@odata.id': string }>;
   }
   VirtualMedia?: { '@odata.id': string };
+
+  Etag?: string; // ETag 属性，iBMC 中使用
 }
 
 export interface Manager {
@@ -206,6 +208,7 @@ export interface Message {
 }
 
 export interface Task {
+  "@odata.id": string;
   Description: string;
   EndTime: Date;
   Id: string;
