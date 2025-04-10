@@ -74,12 +74,12 @@ export class RedfishClient {
 
     const fetchOptions: RequestInit = {
       method: 'GET',
+      ...options,
       headers: {
         'Content-Type': 'application/json',
         ...(sessionToken ? {'X-Auth-Token': sessionToken} : {}),
         ...(options.headers)
       },
-      ...options
     };
     let response: Response;
 
@@ -91,6 +91,7 @@ export class RedfishClient {
     }
     // 处理空响应
     if (response.status === 204 || response.headers.get('content-length') === '0') {
+      console.warn(`空响应: ${url}，状态码: ${response.status}`);
       return {data: {} as T, headers: response.headers};
     }
     // 检查响应状态码
