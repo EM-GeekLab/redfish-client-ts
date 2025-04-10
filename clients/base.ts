@@ -258,7 +258,8 @@ export class RedfishClient {
       return this.systemInfos[sysId];
     }
     try {
-      const {data} = await this.customFetch<SystemInfo>(`${this.baseUrl}/redfish/v1/Systems/${sysId}`);
+      const {data, headers} = await this.customFetch<SystemInfo>(`${this.baseUrl}/redfish/v1/Systems/${sysId}`);
+      data.Etag = headers.get("etag") || '';
       this.systemInfos[sysId] = data;
       return data;
     } catch (error) {
@@ -754,7 +755,8 @@ export class RedfishClient {
     try {
       await this.customFetch<void>(this.baseUrl + setBootUri, {
         method: 'PATCH',
-        body: JSON.stringify(bootData)
+        body: JSON.stringify(bootData),
+        headers: systemInfo.Etag? {'If-Match': systemInfo.Etag}: {}
       });
       return true;
     } catch (error) {
@@ -841,7 +843,7 @@ export class RedfishClient {
     // 查找支持镜像类型的虚拟媒体设备，选中首个支持的设备
     const virtualMediaPromises = virtualMediaData.Members.map(value => this.getVirtualMedia(value['@odata.id']));
     const virtualMediaList = await Promise.all(virtualMediaPromises);
-    const matchingMedia = virtualMediaList.find(media => media.MediaTypes.includes(virtualMediaType));
+    const matchingMedia = virtualMediaList.find(media => media.MediaTypes.includes(virtualMediaType) || media.MediaTypes.length === 0);
     if (!matchingMedia) {
       throw new Error(`未找到支持${virtualMediaType}类型的虚拟媒体设备`);
     }
