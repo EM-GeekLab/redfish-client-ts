@@ -56,7 +56,6 @@ export class iDRACRedfishClient extends RedfishClient {
     }
 
     if (!managerInfo.Actions || !managerInfo.Actions.Oem || !managerInfo.Actions.Oem["#OemManager.ImportSystemConfiguration"]) {
-      console.log(JSON.stringify(managerInfo.Actions))
       throw new Error('系统不支持导入系统配置操作');
     }
     const actionUri = managerInfo.Actions.Oem["#OemManager.ImportSystemConfiguration"].target;
