@@ -2,7 +2,6 @@ import { iDRACRedfishClient } from "./idrac";
 import { iBMCRedfishClient } from "./ibmc";
 import type {RedfishRoot} from "../types";
 import {fetchWithoutSSL} from "../utils";
-import pretty from 'pino-pretty'
 import {type Logger, pino} from "pino";
 
 const localLogger: Logger =
@@ -10,9 +9,7 @@ const localLogger: Logger =
     ? // JSON in production
     pino({ level: 'info' })
     : // Pretty print in development
-    pino({ level: 'debug' }, pretty({
-      colorize: true,
-    }))
+    pino({ level: 'debug' })
 
 /**
  * autoDetect - 自动根据返回的 Redfish 的数据中的 oem 信息，自动选择对应的客户端

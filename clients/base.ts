@@ -15,17 +15,14 @@ import type {
 } from "../types";
 import {ResetType, BootSourceOverrideTargets} from "../enums";
 import {fetchWithoutSSL} from "../utils";
-import {type Logger, pino} from 'pino'
-import pretty from "pino-pretty";
+import {type Logger, pino} from "pino";
 
 const localLogger: Logger =
   process.env.NODE_ENV === 'production'
     ? // JSON in production
     pino({ level: 'info' })
     : // Pretty print in development
-    pino({ level: 'debug' }, pretty({
-      colorize: true,
-    }))
+    pino({ level: 'debug' })
 
 export class NotImplementError extends Error {
   constructor(methodName?: string) {
