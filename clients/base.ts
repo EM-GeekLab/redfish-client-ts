@@ -13,8 +13,19 @@ import type {
   SystemInfo,
   Systems, Task, VirtualMedia, VirtualMediaCollection, VirtualMediaMember
 } from "../types";
-import {ResetType, RedfishMode, BootSourceOverrideTargets} from "../enums";
+import {ResetType, BootSourceOverrideTargets} from "../enums";
 import {fetchWithoutSSL} from "../utils";
+import {type Logger, pino} from 'pino'
+import pretty from "pino-pretty";
+
+const localLogger: Logger =
+  process.env.NODE_ENV === 'production'
+    ? // JSON in production
+    pino({ level: 'info' })
+    : // Pretty print in development
+    pino({ level: 'debug' }, pretty({
+      colorize: true,
+    }))
 
 export class NotImplementError extends Error {
   constructor(methodName?: string) {
@@ -34,6 +45,7 @@ export class RedfishClient {
   private readonly userName: string = '';
   private readonly password: string = '';
   public readonly name: string = '';         // 客户端名称
+  protected readonly log: Logger<never, boolean>;               // 日志对象
 
   private sessionUri: string = '';             // 会话 URI
   private sessionToken: string | null = null;  // 会话令牌，通过 X-Auth-Token 传递
@@ -48,14 +60,15 @@ export class RedfishClient {
    * @param ipAddress BMC IP地址
    * @param username BMC 用户名
    * @param password BMC 密码
-   * @param redfishMode Redfish 模式，默认为 iBMC，根据不同厂商的实现可能会有差异
+   * @param logger 日志对象
    */
-  constructor(ipAddress: string, username: string, password: string, redfishMode: RedfishMode = RedfishMode.iBMC) {
+  constructor(ipAddress: string, username: string, password: string, logger?: Logger) {
     this.baseUrl = `https://${ipAddress}`;
     this.userName = username;
     this.password = password;
 
     this.name = this.constructor.name;
+    this.log = logger? logger.child({ module: 'redfish' }): localLogger.child({ module: 'redfish' });
   }
 
   /**
@@ -86,12 +99,12 @@ export class RedfishClient {
     try {
       response = await fetchWithoutSSL(url, fetchOptions);
     } catch (error) {
-      console.error(`请求失败: ${url}`, error);
+      this.log.error(`请求失败: ${url}`, error);
       throw error;
     }
     // 处理空响应
     if (response.status === 204 || response.headers.get('content-length') === '0') {
-      console.warn(`空响应: ${url}，状态码: ${response.status}`);
+      this.log.warn(`空响应: ${url}，状态码: ${response.status}`);
       return {data: {} as T, headers: response.headers};
     }
     // 检查响应状态码
@@ -135,7 +148,7 @@ export class RedfishClient {
       }
       throw new Error('无法获取 Sessions URI');
     } catch (error) {
-      console.error(`获取 Sessions URI 失败`, error);
+      this.log.error(`获取 Sessions URI 失败`, error);
       throw error;
     }
   }
@@ -172,7 +185,7 @@ export class RedfishClient {
       }
       return this.sessionToken;
     } catch (error) {
-      console.error(`获取会话令牌失败`, error);
+      this.log.error(`获取会话令牌失败`, error);
       throw error;
     }
   }
@@ -189,7 +202,7 @@ export class RedfishClient {
       this.sessionToken = null;
       this.sessionId = null;
     } catch (error) {
-      console.error(`释放会话失败`, error);
+      this.log.error(`释放会话失败`, error);
       throw error;
     }
   }
@@ -202,7 +215,7 @@ export class RedfishClient {
       await this.getSessionToken()
       return true;
     } catch (error) {
-      console.error('Redfish 不可访问', error);
+      this.log.error('Redfish 不可访问', error);
       return false;
     }
   }
@@ -226,7 +239,7 @@ export class RedfishClient {
       });
       return this.systemIds;
     } catch (error) {
-      console.error('获取系统ID失败', error);
+      this.log.error('获取系统ID失败', error);
       throw error;
     }
   }
@@ -263,7 +276,7 @@ export class RedfishClient {
       this.systemInfos[sysId] = data;
       return data;
     } catch (error) {
-      console.error(`获取系统 ${sysId} 信息失败`, error);
+      this.log.error(`获取系统 ${sysId} 信息失败`, error);
       throw error;
     }
   }
@@ -304,7 +317,7 @@ export class RedfishClient {
       this.managerInfos[sysId] = data;
       return data;
     } catch (error) {
-      console.error(`获取管理器信息失败(${managerId}):`, error);
+      this.log.error(`获取管理器信息失败(${managerId}):`, error);
       throw error;
     }
   }
@@ -325,7 +338,7 @@ export class RedfishClient {
       this.chassisInfos[sysId] = data;
       return data;
     } catch (error) {
-      console.error(`获取机箱信息失败(${sysId}):`, error);
+      this.log.error(`获取机箱信息失败(${sysId}):`, error);
       throw error;
     }
   }
@@ -343,7 +356,7 @@ export class RedfishClient {
       throw new Error('未找到处理器信息');
     }
     if (cpuData.ProcessorType !== 'CPU' || !cpuData.ProcessorArchitecture) {
-      console.warn(`${cpuData.Id} 不是CPU处理器或缺少处理器架构信息`);
+      this.log.warn(`${cpuData.Id} 不是CPU处理器或缺少处理器架构信息`);
       return null
     }
 
@@ -385,7 +398,7 @@ export class RedfishClient {
       const results = await Promise.all(cpuInfoPromises);
       return results.filter((cpuInfo): cpuInfo is CPUInfo => cpuInfo !== null) as CPUInfo[];
     } catch (error) {
-      console.error(`获取CPU信息失败(${sysId}):`, error);
+      this.log.error(`获取CPU信息失败(${sysId}):`, error);
       throw error;
     }
   }
@@ -419,7 +432,7 @@ export class RedfishClient {
 
     try {
       if (!systemInfo.PCIeDevices || systemInfo.PCIeDevices.length === 0) {
-        console.warn(`系统 ${sysId} 中未找到 PCIe 设备信息`);
+        this.log.warn(`系统 ${sysId} 中未找到 PCIe 设备信息`);
         return [] as PCIeInfo[];
       }
       // 获取PCIe设备集合
@@ -429,7 +442,7 @@ export class RedfishClient {
       const results = await Promise.all(pcieInfoPromises);
       return results.filter((pcieInfo): pcieInfo is PCIeInfo => pcieInfo !== null) as PCIeInfo[];
     } catch (error) {
-      console.error(`获取PCIe设备信息失败(${sysId}):`, error);
+      this.log.error(`获取PCIe设备信息失败(${sysId}):`, error);
       throw error;
     }
   }
@@ -442,7 +455,7 @@ export class RedfishClient {
     const chassisInfo = this.chassisInfos[sysId] || await this.getChassisInfo(sysId);
     try {
       if (!chassisInfo.PCIeDevices) {
-        console.warn(`系统 ${sysId}, 机箱 ${chassisInfo.Id} 中未找到 PCIe 设备信息`);
+        this.log.warn(`系统 ${sysId}, 机箱 ${chassisInfo.Id} 中未找到 PCIe 设备信息`);
         return [] as PCIeInfo[];
       }
       const pcieUri = chassisInfo.PCIeDevices["@odata.id"];
@@ -455,7 +468,7 @@ export class RedfishClient {
       const results = await Promise.all(pcieInfoPromises);
       return results.filter((pcieInfo): pcieInfo is PCIeInfo => pcieInfo !== null) as PCIeInfo[];
     } catch (error) {
-      console.error(`获取PCIe设备信息失败(${sysId}):`, error);
+      this.log.error(`获取PCIe设备信息失败(${sysId}):`, error);
       throw error;
     }
   }
@@ -476,11 +489,11 @@ export class RedfishClient {
         results = await this.getPCIeDevicesInfoFromChassis(sysId);
       }
       if (results.length === 0) {
-        console.warn(`系统 ${sysId} 中未找到 PCIe 设备信息`);
+        this.log.warn(`系统 ${sysId} 中未找到 PCIe 设备信息`);
       }
       return results;
     } catch (error) {
-      console.error(`获取PCIe设备信息失败(${sysId}):`, error);
+      this.log.error(`获取PCIe设备信息失败(${sysId}):`, error);
       throw error;
     }
   }
@@ -525,7 +538,7 @@ export class RedfishClient {
       const results = await Promise.all(memoryInfoPromises);
       return results.filter((memoryInfo): memoryInfo is MemoryInfo => memoryInfo !== null) as MemoryInfo[];
     } catch (error) {
-      console.error(`获取内存信息失败(${sysId}):`, error);
+      this.log.error(`获取内存信息失败(${sysId}):`, error);
       throw error;
     }
   }
@@ -557,7 +570,7 @@ export class RedfishClient {
     const portCollectionUri = data.NetworkPorts['@odata.id'];
     const {data: portData} = await this.customFetch<Collection>(this.baseUrl + portCollectionUri);
     if (!portData.Members || portData.Members.length === 0) {
-      console.warn(`${data.Id} 缺少网卡端口信息`);
+      this.log.warn(`${data.Id} 缺少网卡端口信息`);
       return null;
     }
     // 获取网卡端口集合
@@ -586,13 +599,13 @@ export class RedfishClient {
     // 获取网卡 URI
     const networkAdaptersUri = chassisInfo.NetworkAdapters['@odata.id'];
     if (!networkAdaptersUri) {
-      console.warn(`系统 ${sysId} 中未找到网卡信息`);
+      this.log.warn(`系统 ${sysId} 中未找到网卡信息`);
       return [] as NetworkCardInfo[];
     }
     try {
       const {data} = await this.customFetch<Collection>(this.baseUrl + networkAdaptersUri);
       if (!data.Members || data.Members.length === 0) {
-        console.warn(`系统 ${sysId} 中未找到网卡信息`);
+        this.log.warn(`系统 ${sysId} 中未找到网卡信息`);
         return [] as NetworkCardInfo[];
       }
       // 获取网卡集合
@@ -601,12 +614,12 @@ export class RedfishClient {
       );
       const results = await Promise.all(networkInfoPromises);
       if (results.length === 0) {
-        console.warn(`系统 ${sysId} 中未找到网卡信息`);
+        this.log.warn(`系统 ${sysId} 中未找到网卡信息`);
         return [] as NetworkCardInfo[];
       }
       return results.filter((networkInfo): networkInfo is NetworkCardInfo => networkInfo !== null) as NetworkCardInfo[];
     } catch (error) {
-      console.error(`获取网卡信息失败(${sysId}):`, error);
+      this.log.error(`获取网卡信息失败(${sysId}):`, error);
       throw error;
     }
   }
@@ -651,7 +664,7 @@ export class RedfishClient {
       });
       return true;
     } catch (error) {
-      console.error(`设置系统 ${sysId} 电源状态失败`, error);
+      this.log.error(`设置系统 ${sysId} 电源状态失败`, error);
       throw error;
     }
   }
@@ -702,7 +715,7 @@ export class RedfishClient {
     while (true) {
       try {
         const {data} = await this.customFetch<Task>(this.baseUrl + taskId, {method: 'GET'});
-        console.log(JSON.stringify(data));
+        this.log.debug(JSON.stringify(data));
         // 超过最大等待时间则抛出异常
         const currentTime = new Date();
         if (currentTime.getTime() - startTime.getTime() >= timeoutMs) {
@@ -714,7 +727,7 @@ export class RedfishClient {
         // 等待任务完成
         await new Promise(resolve => setTimeout(resolve, 3000));
       } catch (error) {
-        console.error(`Error checking task status: ${error}`);
+        this.log.error(`Error checking task status: ${error}`);
         throw error;
       }
     }
@@ -734,7 +747,7 @@ export class RedfishClient {
     once: boolean = true
   ): Promise<boolean> {
     if (this.name === 'iDRACRedfishClient') {
-      console.warn("iDRAC Redfish 设置的下一次启动设备为物理设备，不支持设置虚拟媒体");
+      this.log.warn("iDRAC Redfish 设置的下一次启动设备为物理设备，不支持设置虚拟媒体");
     }
     const sysId = systemId || await this.getDefaultSystemId();
     const systemInfo = this.systemInfos[sysId] || await this.getSystemInfo(sysId);
@@ -765,7 +778,7 @@ export class RedfishClient {
       });
       return true;
     } catch (error) {
-      console.error(`设置系统 ${sysId} 下一次启动设备失败`, error);
+      this.log.error(`设置系统 ${sysId} 下一次启动设备失败`, error);
       throw error;
     }
   }

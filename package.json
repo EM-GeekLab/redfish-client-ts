@@ -23,9 +23,13 @@
     "prepublish": "bun run build"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "pino": "^9.6.0"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "pino-pretty": "^13.0.0"
   }
 }

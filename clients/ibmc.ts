@@ -50,7 +50,6 @@ export class iBMCRedfishClient extends RedfishClient {
       payload.Image = imageUri;
     }
     try {
-      console.log(JSON.stringify(payload, null, 2));
       const {data, headers} = await this.customFetch<Task>(this.baseUrl + matchingMedia.Oem.Huawei.Actions['#VirtualMedia.VmmControl'].target, {
         method: 'POST',
         body: JSON.stringify(payload)
@@ -59,10 +58,10 @@ export class iBMCRedfishClient extends RedfishClient {
       if (!taskId) {
         throw new Error('未找到任务ID');
       }
-      console.log({taskId, data})
+      this.log.debug({taskId, data})
       return await this.waitForTaskCompletion(taskId);
     } catch (error) {
-      console.error('装载虚拟媒体失败', error);
+      this.log.error('装载虚拟媒体失败', error);
       throw error;
     }
   }

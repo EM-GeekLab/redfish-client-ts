@@ -19,7 +19,7 @@ export class iDRACRedfishClient extends RedfishClient {
       });
       return true;
     } catch (error) {
-      console.error('装载虚拟媒体失败', error);
+      this.log.error('装载虚拟媒体失败', error);
       throw error;
     }
   }
@@ -38,7 +38,7 @@ export class iDRACRedfishClient extends RedfishClient {
       });
       return true;
     } catch (error) {
-      console.error('卸载虚拟媒体失败', error);
+      this.log.error('卸载虚拟媒体失败', error);
       throw error;
     }
   }
@@ -80,7 +80,7 @@ export class iDRACRedfishClient extends RedfishClient {
       }
       return true;
     } catch (error) {
-      console.error('设置虚拟媒体为下一个一次性启动设备失败', error);
+      this.log.error('设置虚拟媒体为下一个一次性启动设备失败', error);
       throw error;
     }
   }
