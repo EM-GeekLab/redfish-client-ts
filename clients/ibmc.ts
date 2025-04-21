@@ -50,7 +50,7 @@ export class iBMCRedfishClient extends RedfishClient {
       payload.Image = imageUri;
     }
     try {
-      const {data, headers} = await this.customFetch<Task>(this.baseUrl + matchingMedia.Oem.Huawei.Actions['#VirtualMedia.VmmControl'].target, {
+      const {data} = await this.customFetch<Task>(this.baseUrl + matchingMedia.Oem.Huawei.Actions['#VirtualMedia.VmmControl'].target, {
         method: 'POST',
         body: JSON.stringify(payload)
       });
