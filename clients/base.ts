@@ -63,8 +63,6 @@ export class RedfishClient {
     this.baseUrl = `https://${ipAddress}`;
     this.userName = username;
     this.password = password;
-
-    this.name = this.constructor.name;
     this.log = logger? logger.child({ module: 'redfish' }): localLogger.child({ module: 'redfish' });
   }
 

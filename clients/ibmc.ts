@@ -17,6 +17,7 @@ function decimalToPaddedHex(decimal: number, padding: number): string {
 }
 
 export class iBMCRedfishClient extends RedfishClient {
+  public readonly name: string = 'iBMCRedfishClient';
   /**
    * 获取单个网卡端口信息 - iBMC 模式
    */

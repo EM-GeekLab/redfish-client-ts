@@ -2,6 +2,7 @@ import type {VirtualMedia} from "../types";
 import {RedfishClient} from "./base";
 
 export class iDRACRedfishClient extends RedfishClient {
+  public readonly name: string = 'iDRACRedfishClient';
   /**
    * 装载虚拟媒体 - iDRAC 模式
    * @param imageUri 镜像URI
