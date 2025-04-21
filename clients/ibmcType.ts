@@ -1,4 +1,4 @@
-import type {VirtualMedia, Action, NetworkPort} from "../types";
+import type {VirtualMedia, Action, NetworkPort, Manager} from "../types";
 
 export interface HuaweiVirtualMedia extends VirtualMedia {
   Oem: {
