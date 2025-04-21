@@ -42,7 +42,7 @@ export class RedfishClient {
   private systemIds: string[] = [];            // 可用的系统ID
   protected systemInfos: Record<string, SystemInfo> = {};  // 默认系统信息
   protected managerInfos: Record<string, Manager> = {};    // 默认管理器信息, Key 为系统ID
-  protected chassisInfos: Record<string, Chassis> = {};        // 默认机箱信息, Key 为系统ID
+  protected chassisInfos: Record<string, Chassis> = {};    // 默认机箱信息, Key 为系统ID
   /**
    * 构造函数
    * @param ipAddress BMC IP地址
@@ -308,6 +308,7 @@ export class RedfishClient {
       throw error;
     }
   }
+
   /**
    * 获取机箱信息
    * @param systemId 系统ID
@@ -328,6 +329,7 @@ export class RedfishClient {
       throw error;
     }
   }
+
   //endregion
 
   //region [获取硬件信息]
@@ -539,8 +541,8 @@ export class RedfishClient {
     return {
       macAddress: data.AssociatedNetworkAddresses[0] || 'Unknown',
       linkStatus: data.LinkStatus,
-      speedMbps: data.CurrentLinkSpeedMbps? data.CurrentLinkSpeedMbps : -1,
-      speedDisplay: data.CurrentLinkSpeedMbps? `${data.CurrentLinkSpeedMbps}Mbps` : 'Unknown',
+      speedMbps: data.CurrentLinkSpeedMbps ? data.CurrentLinkSpeedMbps : -1,
+      speedDisplay: data.CurrentLinkSpeedMbps ? `${data.CurrentLinkSpeedMbps}Mbps` : 'Unknown',
     };
   }
 
@@ -608,6 +610,7 @@ export class RedfishClient {
       throw error;
     }
   }
+
   //endregion
 
   //region [电源管理相关接口]
@@ -694,12 +697,12 @@ export class RedfishClient {
    */
   async waitForTaskCompletion(taskId: string): Promise<boolean> {
     const startTime = new Date();
-    const timeoutMs = 60000; // 最大等待时间 1 分钟
+    const timeoutMs = 600000; // 最大等待时间 10 分钟
 
     while (true) {
       try {
         const {data} = await this.customFetch<Task>(this.baseUrl + taskId, {method: 'GET'});
-
+        console.log(JSON.stringify(data));
         // 超过最大等待时间则抛出异常
         const currentTime = new Date();
         if (currentTime.getTime() - startTime.getTime() >= timeoutMs) {
@@ -749,7 +752,7 @@ export class RedfishClient {
     const setBootUri = systemInfo['@odata.id'];
     const bootData = {
       Boot: {
-        BootSourceOverrideEnabled: once? 'Once': 'Continuous',
+        BootSourceOverrideEnabled: once ? 'Once' : 'Continuous',
         BootSourceOverrideTarget: bootDeviceName,
         BootSourceOverrideMode: "UEFI"
       }
@@ -758,7 +761,7 @@ export class RedfishClient {
       await this.customFetch<void>(this.baseUrl + setBootUri, {
         method: 'PATCH',
         body: JSON.stringify(bootData),
-        headers: systemInfo.Etag? {'If-Match': systemInfo.Etag}: {}
+        headers: systemInfo.Etag ? {'If-Match': systemInfo.Etag} : {}
       });
       return true;
     } catch (error) {
