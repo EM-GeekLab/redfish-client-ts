@@ -1,7 +1,20 @@
 import type {NetworkPortInfo, Task, VirtualMedia} from "../types";
-import type {HuaweiNetworkPort, HuaweiVirtualMedia, VmmControlPayload} from "./ibmcType";
+import type {HuaweiManager, HuaweiNetworkPort, HuaweiVirtualMedia, KvmService, VmmControlPayload} from "./ibmcType";
 import {RedfishClient} from "./base";
 import {BootSourceOverrideTargets} from "../enums";
+
+function generateRandomHexString(length: number): string {
+  let result = '';
+  const characters = '0123456789abcdef';
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+}
+
+function decimalToPaddedHex(decimal: number, padding: number): string {
+  return decimal.toString(16).padStart(padding, '0');
+}
 
 export class iBMCRedfishClient extends RedfishClient {
   /**
@@ -83,5 +96,38 @@ export class iBMCRedfishClient extends RedfishClient {
     }
     const bootTarget = mediaType === 'CD' ? BootSourceOverrideTargets.Cd : BootSourceOverrideTargets.Floppy;
     return this.setNextBootDevice(sysId, bootTarget);
+  }
+
+  async getKVMUrl(systemId: string): Promise<string> {
+    const sysId = systemId || await this.getDefaultSystemId();
+    const managerInfo = this.managerInfos[sysId] || await this.getManagerInfo(sysId);
+    const huaweiManager = managerInfo as HuaweiManager;
+    const kvmService = huaweiManager.Oem.Huawei.KvmService;
+    if (!kvmService) {
+      throw new Error('未找到KVM信息');
+    }
+
+    // 获取KVM服务信息
+    const {data: kvmServiceData} = await this.customFetch<KvmService>(this.baseUrl + kvmService["@odata.id"], {"method": 'GET'});
+    if (!kvmServiceData) {
+      throw new Error('未找到KVM服务信息');
+    }
+    const setKeyUrl = this.baseUrl + kvmServiceData.Actions["#KvmService.SetKvmKey"].target;
+    // 创建随机字符串用于 KVM Key 创建
+    const keyId = 1 + Math.floor(Math.random() * 114514);
+    const secretKey = generateRandomHexString(64);
+    await this.customFetch(setKeyUrl, {
+      method: 'POST',
+      body: JSON.stringify({
+        Id: keyId,
+        IdExt: generateRandomHexString(32),
+        SecretKey: secretKey,
+        Mode: "Shared"
+      })
+    });
+
+    // 根据是否加密，计算最终用于拉起 KVM 的 Key
+    const kvmKey = !kvmServiceData.EncryptionEnabled ? keyId.toString(): (decimalToPaddedHex(keyId, 8) + secretKey);
+    return `${this.baseUrl}/remote_access.asp?authParam=${kvmKey}&lp=cn&openway=html5`;
   }
 }

@@ -886,5 +886,10 @@ export class RedfishClient {
     }
     return {status: true, matchingMedia};
   }
+
   //endregion
+
+  async getKVMUrl(systemId?: string): Promise<string> {
+    throw new NotImplementError('getKVMKey');
+  }
 }

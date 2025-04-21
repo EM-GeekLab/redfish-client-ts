@@ -8,6 +8,21 @@ export interface HuaweiVirtualMedia extends VirtualMedia {
   }
 }
 
+export interface HuaweiManager extends Manager {
+  Oem: {
+    Huawei: {
+      KvmService: { '@odata.id': string };
+      SecurityService: { '@odata.id': string };
+    }
+  }
+}
+
+export interface KvmService {
+  EncryptionConfigurable: boolean;
+  EncryptionEnabled: boolean;
+  Actions: Record<string, Action>;
+}
+
 export interface VmmControlPayload {
   VmmControlType: string;
   Image?: string;
