@@ -1,4 +1,4 @@
-import type {Collection, VirtualMedia} from "../types";
+import type {VirtualMedia} from "../types";
 import {RedfishClient} from "./base";
 import type {DellJobService, iDRACManager} from "./idracType.ts";
 
