@@ -49,7 +49,13 @@ export class iBMCRedfishClient extends RedfishClient {
     };
     if (action !== 'Disconnect') {
       payload.Image = imageUri;
+      this.log.info(`虚拟媒体操作: ${action}, 镜像URI: ${imageUri}`);
+      if (!(imageUri.startsWith("https://") || imageUri.startsWith("nfs://") || imageUri.startsWith("cifs://") || imageUri.startsWith("smb://"))) {
+        this.log.error('镜像URI必须以https://、nfs://、smb://或cifs://开头');
+        throw new Error('镜像URI必须以https://、nfs://、smb://或cifs://开头');
+      }
     }
+
     try {
       const {data} = await this.customFetch<Task>(this.baseUrl + matchingMedia.Oem.Huawei.Actions['#VirtualMedia.VmmControl'].target, {
         method: 'POST',
