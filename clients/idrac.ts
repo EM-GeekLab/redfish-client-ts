@@ -1,5 +1,6 @@
-import type {VirtualMedia} from "../types";
+import type {Collection, VirtualMedia} from "../types";
 import {RedfishClient} from "./base";
+import type {DellJobService, iDRACManager} from "./idracType.ts";
 
 export class iDRACRedfishClient extends RedfishClient {
   public readonly name: string = 'iDRACRedfishClient';
@@ -51,14 +52,22 @@ export class iDRACRedfishClient extends RedfishClient {
    */
   async setVirtualMediaAsNextBootDevice(mediaType: string = 'CD', systemId?: string): Promise<boolean> {
     const sysId = systemId || await this.getDefaultSystemId();
-    const managerInfo = this.managerInfos[sysId] || await this.getManagerInfo(sysId);
+    const managerInfo = (this.managerInfos[sysId] || await this.getManagerInfo(sysId)) as iDRACManager;
     if (!managerInfo) {
       throw new Error('未找到管理器信息');
     }
-
     if (!managerInfo.Actions || !managerInfo.Actions.Oem || !managerInfo.Actions.Oem["#OemManager.ImportSystemConfiguration"]) {
       throw new Error('系统不支持导入系统配置操作');
     }
+
+    // 删除已有的全部任务，避免后续的任务冲突报错
+    const {data: jobCollection} = await this.customFetch<DellJobService>(this.baseUrl + managerInfo.Links.Oem.Dell.DellJobService["@odata.id"]);
+    const deleteJobUri = jobCollection.Actions["#DellJobService.DeleteJobQueue"].target;
+    await this.customFetch<any>(this.baseUrl + deleteJobUri, {
+      method: 'POST',
+      body: JSON.stringify({"JobID": "JID_CLEARALL"})
+    })
+
     const actionUri = managerInfo.Actions.Oem["#OemManager.ImportSystemConfiguration"].target;
     const bootDeviceName = mediaType === 'CD' ? 'VCD-DVD' : 'vFDD';
     const payload = {
