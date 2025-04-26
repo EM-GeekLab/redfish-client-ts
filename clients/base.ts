@@ -39,7 +39,7 @@ export class NotImplementError extends Error {
  */
 export class RedfishClient {
   protected readonly baseUrl: string = '';
-  private readonly userName: string = '';
+  protected readonly userName: string = '';
   private readonly password: string = '';
   public readonly name: string = '';         // 客户端名称
   protected readonly log: Logger<never, boolean>;               // 日志对象

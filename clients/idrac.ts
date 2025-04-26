@@ -1,6 +1,6 @@
 import type {VirtualMedia} from "../types";
 import {RedfishClient} from "./base";
-import type {DellJobService, iDRACManager} from "./idracType.ts";
+import type {DelliDRACCardService, DellJobService, iDRACManager, KVMSessionInfo} from "./idracType.ts";
 
 export class iDRACRedfishClient extends RedfishClient {
   public readonly name: string = 'iDRACRedfishClient';
@@ -93,5 +93,21 @@ export class iDRACRedfishClient extends RedfishClient {
       this.log.error('设置虚拟媒体为下一个一次性启动设备失败', error);
       throw error;
     }
+  }
+
+  async getKVMUrl(systemId: string): Promise<string> {
+    const sysId = systemId || await this.getDefaultSystemId();
+    const managerInfo = (this.managerInfos[sysId] || await this.getManagerInfo(sysId)) as iDRACManager;
+    if (!managerInfo) {
+      throw new Error('未找到管理器信息');
+    }
+    const iDRACUri = managerInfo.Links.Oem.Dell.DelliDRACCardService["@odata.id"];
+    const {data: iDRACData} = await this.customFetch<DelliDRACCardService>(this.baseUrl + iDRACUri);
+    const kvmUri = iDRACData.Actions["#DelliDRACCardService.GetKVMSession"].target;
+    const {data: kvmData} = await this.customFetch<KVMSessionInfo>(this.baseUrl + kvmUri, {
+      method: 'POST',
+      body: JSON.stringify({"SessionTypeName":"ssl_cert.txt"})
+    });
+    return `${this.baseUrl}/console?username=${this.userName}&tempUsername=${kvmData.TempUsername}&tempPassword=${kvmData.TempPassword}`
   }
 }
